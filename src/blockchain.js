@@ -73,10 +73,14 @@ class Blockchain {
                 }
                 block.hash = SHA256(JSON.stringify(block)).toString();
                 self.chain.push(block);
-                self.validateChain();
+                let errorLog = await self.validateChain();
+                if (errorLog && errorLog.length > 0) {
+                    reject(errorLog);
+                    return;
+                }
                 resolve(block);
-            } catch(err) {
-                reject(err);
+            } catch (error) {
+                reject(error);
             }
         });
     }
@@ -122,8 +126,12 @@ class Blockchain {
             }
             bitcoinMessage.verify(message, address, signature);
             let newBlock = new BlockClass.Block({'star': star, 'owner': address});
-            self._addBlock(newBlock);
-            resolve(newBlock);
+            try {
+                await self._addBlock(newBlock);
+                resolve(newBlock);
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
@@ -176,8 +184,8 @@ class Blockchain {
                 let data;
                 try {
                     data = await block.getBData();
-                } catch(err) {
-                    console.log(err);
+                } catch (error) {
+                    console.log(error);
                 }
                 if (data && data.owner === address) {
                     stars.push(data.star);
@@ -200,7 +208,7 @@ class Blockchain {
         return new Promise(async (resolve, reject) => {
             for (let index = 1; index < self.chain.length; index++) {
                 if (self.chain[index].previousBlockHash !== self.chain[index-1].hash) {
-                    errorLog.push[`Error validating block ${index}`]
+                    errorLog.push(`Error validating block ${index}`);
                 }
             }
             resolve(errorLog);
