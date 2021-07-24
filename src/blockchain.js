@@ -123,8 +123,17 @@ class Blockchain {
             let currentTime = parseInt(new Date().getTime().toString().slice(0, -3));
             if (currentTime - messageTime > 300) {
                 reject('Time elapsed more than 5 minutes');
+                return;
             }
-            bitcoinMessage.verify(message, address, signature);
+            try {
+                if (!bitcoinMessage.verify(message, address, signature)) {
+                    reject('Could not verify message');
+                    return;
+                }
+            } catch (error) {
+                reject(error);
+                return;
+            }
             let newBlock = new BlockClass.Block({'star': star, 'owner': address});
             try {
                 await self._addBlock(newBlock);
@@ -206,9 +215,13 @@ class Blockchain {
         let self = this;
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
-            for (let index = 1; index < self.chain.length; index++) {
-                if (self.chain[index].previousBlockHash !== self.chain[index-1].hash) {
+            for (let index = 0; index < self.chain.length; index++) {
+                let blockValidated = await self.chain[index].validate();
+                if (!blockValidated) {
                     errorLog.push(`Error validating block ${index}`);
+                }
+                if (index > 0 && self.chain[index].previousBlockHash !== self.chain[index-1].hash) {
+                    errorLog.push(`Error comparing hash of block ${index} with ${index-1}`);
                 }
             }
             resolve(errorLog);
